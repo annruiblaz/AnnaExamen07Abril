@@ -1,14 +1,15 @@
 // Variables globales para gestionar el juego
 let pajaro, fondo, tuberiaInferior;
-let posPajaroY = 250;
+let posPajaroY = 300;
 let velocidad = 0;
-let gravedad = 0.6;
+let gravedad = 0.6 ;
 let fuerzaSalto = -20;
 let tuberias = [];
 let espacioTuberias = 100; // Espacio constante entre tuberías
-let velocidadTuberias = 1;
+let velocidadTuberias = 1.5  ;
 let cantidadTuberias = 4; // Número de tuberías reutilizables
 let anchoTuberia = 50; // Ancho de la imagen de la tubería
+let canJump = true;
 
 // Precarga las imágenes del juego
 function preload() {
@@ -21,9 +22,15 @@ function preload() {
 function setup() {
 	createCanvas(500, 600);
 	// Inicializa las tuberías en distintas posiciones
-	for (let i = 0; i < cantidadTuberias; i++) {
+    tuberias.push(new Tuberia(130));
+    tuberias.push(new Tuberia(130 + anchoTuberia + espacioTuberias));
+    tuberias.push(new Tuberia(130+ (anchoTuberia + espacioTuberias) * 2));
+    tuberias.push(new Tuberia(130+ (anchoTuberia + espacioTuberias) * 3));
+
+
+/* 	for (let i = 0; i < cantidadTuberias; i++) {
 		tuberias.push(new Tuberia(i * (espacioTuberias + anchoTuberia) + width));
-	}
+	} */
 }
 
 // Bucle principal del juego
@@ -41,20 +48,35 @@ function draw() {
 		}
 
         //TODO: revisar para dar + margen
-        if(tuberias[i].x >= 100 && tuberias[i].x <= 140) {
-            console.log('La pipe está con el flappy');
+		//comprueba si la tuberia se encuentra en el espacio del flappy (100-140px del canvas)
+        if(tuberias[i].x >= 80  && tuberias[i].x <= 130 ) {
+            //console.log('La pipe está en el eje x a la altura del flappy');
 
-            console.log('PosY de la pipe', tuberias[i].posY);
-            console.log('PosY de flappy', posPajaroY);
-
+/*             console.log('PosY de la pipe', tuberias[i].posY);
+            console.log('PosY de flappy', posPajaroY); */
+			//si el flappy esta por encima de la pipe (en el eje y)
             if(posPajaroY < tuberias[i].posY) {
-                console.log('Flappy sobre pipe');
+                //console.log('Flappy sobre pipe');
+				if(posPajaroY >=   tuberias[i].posY - 32 ) {
+					posPajaroY = tuberias[i].posY - 32;
+					velocidad = 0;
+					canJump = true;
+				} else {
+					canJump = false;
+				}
             }
-        } else {
+        } else {//si la tuberia no se encuentra dnd el flappy (es decir está entre el hueco d las tuberias)
+			//y si el flappy se encuentra x abajo d la altura de la tuberia (está en el hueco)
             if(posPajaroY > tuberias[i].posY) {
-                console.log('Flappy está KO en el hueco entre pipes');
+				canJump = false;
             }
         }
+
+		//pinta un circulo dnd en el punto en el q coinciden el flappy y la pipe
+		if(canJump) {
+			fill(255, 0, 0);
+			ellipse(120, tuberias[i].posY - 15, 10, 10);
+		}
 	}   
 
 	// pinta el flappy img, x, y, width, height
@@ -70,13 +92,24 @@ function draw() {
 		velocidad = 0;
 	}
 
+	mostrarDatos();
 }
+
+function mostrarDatos() {
+    fill('#000');
+    textSize(16);
+    text(`posPajaroY: ${posPajaroY.toFixed(1)}`, 20, 20);
+    text(`velocidad: ${velocidad.toFixed(1)}`, 20, 40);
+    text(`canJump: ${canJump}`, 20, 60);
+}
+
 
 // Función que detecta cuando se presiona una tecla
 function keyPressed() {
-	if (key == ' ') {
+	if (key == ' ' && canJump) {
 		velocidad = fuerzaSalto;
         checkCollision();
+		canJump = false;
 	}
 }
 
@@ -88,7 +121,6 @@ function checkCollision() {
 class Flappy {
 
 }
-
 
 // Clase que representa las tuberías
 class Tuberia {
