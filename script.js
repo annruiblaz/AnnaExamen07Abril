@@ -1,19 +1,19 @@
 // Variables globales para gestionar el juego
 let pajaro, fondo, tuberiaInferior;
-let posPajaroY = 200;
-let velocidad = 0;
-let gravedad = 0.6;
-let fuerzaSalto = -20;
+let velocity = 0;
+let gravity = 0.6;
+let jumpPower = -20;
 let tuberias = [];
-let espacioTuberias = 100; // Espacio constante entre tuberías
-let velocidadTuberias = 1.8 ;
-let cantidadTuberias = 4; // Número de tuberías reutilizables
-let anchoTuberia = 50; // Ancho de la imagen de la tubería
+let pipeGap = 100; // Espacio constante entre tuberías
+let velocityPipes = 1.8 ;
+let numPipes = 4; // Número de tuberías reutilizables
+let pipeWidth = 50; // Ancho de la imagen de la tubería
 let canJump = true;
 let neat;
-let pruebaFlappy;
+let pruebaFlappy, pipeHeight;
 let bestScore = 0;
-let pipeHeight;
+let generation = 0;
+let bestBrain = null;
 
 // Precarga las imágenes del juego
 function preload() {
@@ -26,12 +26,22 @@ function preload() {
 function setup() {
 	createCanvas(500, 600);
 	createPipes();
-	pruebaFlappy = new Flappy();
+	//pruebaFlappy = new Flappy();
+
+	//inicializamos neat con una red d 3 input, 1 output y la config
+	neat = new neataptic.Neat(3, 1, {
+		mutationRate: 0.2, //% d mutacion en cada geneeracion
+		popSize: 50, //tamaño d la pop d redes neuronales
+		elitism: 2, //num d individuos q se preservan sin cambios
+		mutationAmount: 2 //num d mutaciones aplicadas a cada individuo
+	});
+
+	resetGame();
 }
 
 function createPipes() {
 	// Inicializa las tuberías en distintas posiciones
-	for (let i = 0; i < cantidadTuberias  ; i++) {
+	for (let i = 0; i < numPipes  ; i++) {
 		tuberias.push(new Tuberia(200 * i));
 	}
 	pipeHeight = (tuberias[0].posY - 32);
@@ -45,135 +55,124 @@ function draw() {
 	for (let i = 0; i < tuberias.length; i++) {
 		tuberias[i].mover();
 		tuberias[i].mostrar();
+
 		// Reubica las tuberías cuando salen de la pantalla
 		if (tuberias[i].fueraPantalla()) {
-			let ultimaX = Math.max(...tuberias.map(t => t.xStart + anchoTuberia));
-			tuberias[i].reiniciar(ultimaX + espacioTuberias + anchoTuberia);
+			let ultimaX = Math.max(...tuberias.map(t => t.xStart + pipeWidth));
+			tuberias[i].reiniciar(ultimaX + pipeGap + pipeWidth);
 		}
 
-		//TODO: revisar para dar + margen
-		//comprueba si la tuberia se encuentra en el espacio del flappy (100-140px del canvas)
-		if (tuberias[i].xStart + 50 >= 95 && tuberias[i].xStart <= 145) {
-			//console.log('La pipe está en el eje x a la altura del flappy');
-
-			//para comprobar q x estamos detectando!
-			stroke('red');
-			line(parseInt(tuberias[i].xStart + 50).toFixed(), 0, parseInt(tuberias[i].xStart + 50).toFixed(), 600); // x derecha
-			line(parseInt(tuberias[i].xStart).toFixed(), 0, parseInt(tuberias[i].xStart).toFixed(), 600); // x derecha
-
-			//si el flappy esta por encima de la pipe (en el eje y)
-			if (pruebaFlappy.y < tuberias[i].posY) {
-				//console.log('Flappy sobre pipe');
-				if (pruebaFlappy.y >= pipeHeight && !pruebaFlappy.hasJumped) {
-					pruebaFlappy.y = pipeHeight;
-					pruebaFlappy.velocidad = 0;
-					canJump = true;
-				} else {
-					canJump = false;
-					pruebaFlappy.hasJumped = false;
-				}
-			}
-		} else { //si la tuberia no se encuentra dnd el flappy (es decir está entre el hueco d las tuberias)
-			//y si el flappy se encuentra x abajo d la altura de la tuberia (está en el hueco)
-			if (pruebaFlappy.y > tuberias[i].posY) {
-				canJump = false;
-/* 				pruebaFlappy.estaVivo = false;
-				pruebaFlappy.puntuacion = 0; */
-			}
-		}
-
-		if (pruebaFlappy.estaVivo) {
+		/* if (pruebaFlappy.estaVivo) {
 			pruebaFlappy.puntuacion++;
 		} else {
 			console.log('Flappy esta muerto');
-			setTimeout(resetGame, 200      );
-		}
+			setTimeout(resetGame, 200);
+		} */
 
 		//pinta lineas para visualizar los puntos q utilizo d ref
-		stroke('#FFF');
-		line(95, 0, 95, 600); // x izq
+		//stroke('#FFF');
+		//line(95, 0, 95, 600); // x izq
 		//line(145, 0, 145, 600);// x derecha
-		line(95, pipeHeight, 145, pipeHeight); //punto d "altura d la pipe" q es dnd se posiciona el flappy
-
+		//line(95, pipeHeight, 145, pipeHeight); //punto d "altura d la pipe" q es dnd se posiciona el flappy
 	}
+
+	let allDead = true;
+
+	for(let genome of neat.population) {
+		let flappy = genome.bird;
+		
+		if(flappy.estaVivo) {
+			console.log('genome.bird VIVO', flappy);
+			allDead = false;
+			flappy.update();
+			flappy.show();
+			genome.puntuacion ++;
+
+			if(genome.puntuacion > bestScore) {
+				bestScore = genome.puntuacion;
+			}
+		}
+	}
+
+	//pruebaFlappy.checkCollision();
 
 	// pinta la img del flappy
-	pruebaFlappy.show();
+	//pruebaFlappy.show();
 	// Aplica la gravedad al flappy
-	pruebaFlappy.update();
+	//pruebaFlappy.update();
 
-	if (pruebaFlappy.puntuacion > bestScore) {
+	/* if (pruebaFlappy.puntuacion > bestScore) {
 		bestScore = pruebaFlappy.puntuacion;
-	}
+	} */
 
-	// Evita que el flappy caiga fuera de la pantalla
-	if (pruebaFlappy.y > height - 30) {
-		pruebaFlappy.y = height - 30;
-		pruebaFlappy.velocidad = 0;
-		pruebaFlappy.estaVivo = false;
-	}
-
-	mostrarDatos();
+	//mostrarDatos();
 }
 
 function mostrarDatos() {
 	fill('#000');
 	textSize(16);
-	text(`Flappy y: ${posPajaroY.toFixed(1)}`, 10, 20);
-	text(`Velocidad: ${velocidad.toFixed(1)}`, 10, 40);
+	text(`Flappy y: ${pruebaFlappy.y.toFixed(1)}`, 10, 20);
+	text(`Velocidad: ${velocity.toFixed(1)}`, 10, 40);
 	text(`canJump: ${canJump}`, 10, 60);
 	text(`Puntuación Flappy: ${pruebaFlappy.puntuacion}`, 10, 80);
 	text(`Record Total: ${bestScore}`, 10, 100);
-
 }
 
 function resetGame() {
+	//eliminamos pipes y las volvemos a crear
 	tuberias = [];
 	createPipes();
 
-	pruebaFlappy.y = 200; // Posición inicial
-    pruebaFlappy.velocidad = 0; // Reiniciar velocidad
-    pruebaFlappy.estaVivo = true; // Hacer que el flappy esté vivo
-    pruebaFlappy.puntuacion = 0; // Reiniciar la puntuación
-    pruebaFlappy.hasJumped = false; // Reiniciar el estado de salto
+/* 	pruebaFlappy.y = 200; // colocamos el flappy en su y inicial
+    pruebaFlappy.velocity = 0; //reiniciamos la velocidad
+    pruebaFlappy.estaVivo = true; //para q el flappy esté vivo
+    pruebaFlappy.puntuacion = 0; //reiniciamos la puntuación
+    pruebaFlappy.hasJumped = false; //reiniciamos el estado de salto */
 
+	for( let genome of neat.population) {
+		genome.y = 200; //colocamos el flappy en su y inicial
+		genome.estaVivo = true; //para q el flappy esté vivo
+		genome.puntuacion = 0; //reiniciamos la puntuación
+		genome.hasJumped = false;//reiniciamos el estado de salto
+		genome.bird = new Flappy(genome); //creamos un nuevo flappy para cada individuo
+	}
 }
 
 // Función que detecta cuando se presiona una tecla
 function keyPressed() {
-	console.log('Tecla pulsado');
 	if (key == ' ' && canJump) {
-		console.log('Spacebar Pulsado y puede saltar');
-		console.log(`Velocidad: ${pruebaFlappy.velocidad} Fuerza salto: ${pruebaFlappy.fuerzaSalto}`);
-
-		pruebaFlappy.velocidad = pruebaFlappy.fuerzaSalto;
+		pruebaFlappy.velocity = pruebaFlappy.jumpPower;
 		canJump = false;
-		console.log(`Salto realizado: Velocidad: ${pruebaFlappy.velocidad} Fuerza salto: ${pruebaFlappy.fuerzaSalto}`);
 
 		pruebaFlappy.hasJumped = true;
 	}
 }
 
+function nextGeneration() {
+	neat.evolve(); //evolucionamos la pop usando neat
+	resetGame();//reiniciamos con la nueva gen
+}
+
 // Clase que representa las tuberías
 class Tuberia {
 	constructor(lastX) {
-		this.xStart = lastX + espacioTuberias;
+		this.xStart = lastX + pipeGap;
 		this.posY = height - 200;
 	}
 
 	// Mueve la tubería hacia la izquierda
 	mover() {
-		this.xStart -= velocidadTuberias;
+		this.xStart -= velocityPipes  ;
 	}
 
 	// Dibuja la tubería en pantalla
 	mostrar() {
-		image(tuberiaInferior, this.xStart, this.posY, anchoTuberia, tuberiaInferior.height);
+		image(tuberiaInferior, this.xStart, this.posY, pipeWidth, tuberiaInferior.height);
 	}
 
 	// Verifica si la tubería ha salido de la pantalla
 	fueraPantalla() {
-		return this.xStart < -anchoTuberia;
+		return this.xStart < -pipeWidth;
 	}
 
 	// Reposiciona la tubería a la derecha de la pantalla con separación constante
@@ -184,32 +183,80 @@ class Tuberia {
 
 //clase para los flappys
 class Flappy {
-	constructor() {
-		this.x = 100;
-		this.y = 200;
+	constructor(genome) {
+		this.x = 100; //posicion inicial en el eje x
+		this.y = 200; //inicial en el eje y
 		this.alto = 30;
 		this.ancho = 40;
-		this.velocidad = velocidad;
-		this.gravedad = gravedad;
-		this.fuerzaSalto = fuerzaSalto;
-		this.puntuacion = 0;
-		this.estaVivo = true;
-		this.hasJumped = false;
+		this.velocity = velocity;
+		this.gravity = gravity;
+		this.jumpPower = jumpPower;
+		this.puntuacion = 0; //para luego seleccionar los mejores
+		this.estaVivo = true; //para ver si esta vivo o no (si cae entre los huecos)
+		this.hasJumped = false; //controla si el flappy ya ha saltado sobre la tuberia
+		this.brain = genome; //asignamos la red neuronal al flappy
 	}
 
 	update() {
 		// Aplica la gravedad al pájaro
-		this.velocidad += this.gravedad;
-		this.y += this.velocidad;
+		this.velocity += this.gravity;
+		this.y += this.velocity;
+
+		//TODO: añadir getInputs y obtenerlos para activar la red neuronal con ellos
+ 		let inputs = this.getInputs();
+		//let output = this.brain.activate(inputs);
+
+		// + comprobar salida si >.5 salta
+
 		this.checkCollision();
 	}
 
 	checkCollision() {
 		//console.log('Dentro de checkCollision flappy');
+		 // Comprueba colisión con el suelo
+		if (this.y > height - 30) {
+            this.y = height - 30;
+            this.velocity = 0;
+            this.estaVivo = false;
+            return;
+        }
+
+		// comprobamos la colisión con las pipes
+        for (let i = 0; i < tuberias.length; i++) {
+            const pipe = tuberias[i];
+            
+            // Comprueba si la pipe está en el espacio del flappy (95-145px del canvas)
+            if (pipe.xStart + pipeWidth >= 95 && pipe.xStart <= 145) {
+                this.pipeHeight = pipe.posY - 32; // Actualiza la altura de la tubería
+
+                //si el flappy esta x encima de la pipe (en el eje y)
+                if (this.y < pipe.posY) {
+					//si no ha saltado aun y esta sobre la pipe
+                    if (this.y >= this.pipeHeight && !this.hasJumped) {
+                        this.y = this.pipeHeight; //lo mantenemos "estatico" sobre la altura d la pipe
+                        this.velocity = 0;//paramos la caida
+                        canJump = true;//activamos el salto (con la flag evitamos q pueda hacer doble salto)
+                    } else { //si ha saltado
+                        canJump = false; //desactivamos la flag
+                        this.hasJumped = false; //permitimos q pueda saltar + mantenerse en la siguiente pipe
+                    }
+                }
+            } else { //si la pipe no esta dnd el flappy (xq flappy esta entre el hueco de las pipes)
+                // y si el flappy esta x debajo de la altura de la pipe (  en el hueco)
+                if (this.y > pipe  .posY) {
+                    canJump = false;
+                }
+            }
+        }
 	}
 
 	show() {
 		// pinta el flappy img, x, y, width, height
 		image(pajaro, this.x, this.y, this.ancho, this.alto);
+	}
+
+	getInputs() {
+		let closestPipe = tuberias.find(p => p.x > this.x) || tuberias[0];
+		console.log('Pipe + cercana: ', closestPipe);
 	}
 }
