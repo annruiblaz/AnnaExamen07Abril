@@ -1,5 +1,5 @@
 // Variables globales para gestionar el juego
-let bird, background, pipeBottom;
+let bird, bgGame, pipeBottom;
 let velocity = 0;
 let gravity = 0.6;
 let jumpPower = -20;
@@ -15,7 +15,7 @@ let flappysAlive = 0;
 
 // Precarga las imágenes del juego
 function preload() {
-	background = loadImage("/assets/background.png");
+	bgGame = loadImage("/assets/background.png");
 	bird = loadImage("/assets/flappy.png");
 	pipeBottom = loadImage("/assets/pipe_bottom.png");
 }
@@ -50,14 +50,14 @@ function createPipes() {
 
 // Bucle principal del juego
 function draw() {
-	background(background); //pintamos el fondo
+	background(bgGame); //pintamos el fondo
 
 	flappysAlive = 0; //reseteo el num d flappys vivos
 
 	// Mueve y dibuja cada tubería
 	for (let i = 0; i < pipes.length; i++) {
 		pipes[i].move();
-		pipes[i].mostrar();
+		pipes[i].show();
 
 		// Reubica las tuberías cuando salen de la pantalla
 		if (pipes[i].offCanvas()) {
