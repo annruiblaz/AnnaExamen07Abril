@@ -24,14 +24,12 @@ function preload() {
 function setup() {
 	createCanvas(500, 600); //creamos el canvas
 	createPipes();//y las pipes iniciales
-	const neatTest = new neataptic.Neat(1, 1, { popSize: 100 });
-	console.log("Población en prueba neatTest:", neatTest.population.length); // Debería ser 10
 
-	//inicializamos neat con una red d 3 inputs, 1 output y la config
-	neat = new neataptic.Neat(3, 1, {
-		mutationRate: 0.2, //% d mutacion en cada geneeracion
-		popSize: 20, //tamaño d la pop d redes neuronales
-		elitism: 2, //num d individuos q se preservan sin cambios
+	//inicializamos neat con una red d 5 inputs, 1 output y la config
+	neat = new neataptic.Neat(5, 1, {
+		mutationRate: 0.3, //% d mutacion en cada geneeracion
+		popSize: 50, //tamaño d la pop d redes neuronales
+		elitism: 5, //num d individuos q se preservan sin cambios
 		mutationAmount: 2 //num d mutaciones aplicadas a cada individuo
 	});
 
@@ -42,9 +40,14 @@ function setup() {
 }
 
 function createPipes() {
+	//asignamos la posicion x d la pipe inicial
+	//para q el flappy (siempre en la x 100 aprox) caiga sobre la pipe
+	let initX =  150;
+
 	// crea las pipes en distintas posiciones
 	for (let i = 0; i < numPipes  ; i++) {
-		pipes.push(new Pipe(200 * i));
+		pipes.push(new Pipe(i* (pipeGap + pipeWidth) + initX));
+		console.log('pipes en create pipes', pipes);
 	}
 }
 
@@ -59,17 +62,19 @@ function draw() {
 		pipes[i].move();
 		pipes[i].show();
 
-		// Reubica las tuberías cuando salen de la pantalla
+		// obtiene la pipe q se sale d la pantalla
 		if (pipes[i].offCanvas()) {
-			let ultimaX = Math.max(...pipes.map(t => t.xStart + pipeWidth));
-			pipes[i].reiniciar(ultimaX + pipeGap + pipeWidth);
+			//almacenamos la ultima pos x (de la pipe q se sale) + su ancho d pipe (para comprobar q ha salido al completo
+			//y no quede feo, si no al tocar el 1º px d la pipe el canvas se eliminaria)
+			let lastX = Math.max(...pipes.map(t => t.xStart + pipeWidth));
+			pipes[i].reset(lastX + pipeGap);//a la nueva pos X d la pipe le sumamos el gap para q sea constante
 		}
 
 		//pinta lineas para visualizar los puntos q utilizo d ref d dnd está el flappy
-		//stroke('#FFF');
-		//line(95, 0, 95, 600); // x izq
-		//line(145, 0, 145, 600);// x derecha
-		//line(95, pipes[0].posY -32, 145, pipes[0].posY -32); //punto d "altura d la pipe" q es dnd se posiciona el flappy
+		stroke('#FFF');
+		line(95, 0, 95, 600); // x izq
+		line(145, 0, 145, 600);// x derecha
+		line(95, pipes[0].posY -32, 145, pipes[0].posY -32); //punto d "altura d la pipe" q es dnd se posiciona el flappy
 	}
 
 	//bool q controla el estado d los flappys
@@ -141,7 +146,7 @@ function nextGeneration() {
 // Clase que representa las tuberías
 class Pipe {
 	constructor(lastX) {
-		this.xStart = lastX + pipeGap;
+		this.xStart = lastX;
 		this.posY = height - 200;
 	}
 
@@ -161,8 +166,8 @@ class Pipe {
 	}
 
 	// Reposiciona la tubería a la derecha de la pantalla con separación constante
-	reiniciar(nuevaX) {
-		this.xStart = nuevaX;
+	reset(newX) {
+		this.xStart = newX;
 	}
 }
 
@@ -171,8 +176,8 @@ class Flappy {
 	constructor(genome) {
 		this.x = 100; //posicion inicial en el eje x
 		this.y = 200; //inicial en el eje y
-		this.alto = 30;
-		this.ancho = 40;
+		this.height = 30;
+		this.width = 40;
 		this.velocity = velocity;
 		this.gravity = gravity;
 		this.jumpPower = jumpPower;
@@ -189,13 +194,13 @@ class Flappy {
 		this.y += this.velocity;
 
  		let inputs = this.getInputs(); //obtenemos los inputs para la red ( eje x, y de la pipe + posicion y del flappy)
-		//console.log('Inputs: ', inputs);
+		console.log('Inputs: ', inputs);
 
 		let output = this.brain.activate(inputs); //activamos la red neuronal con los inputs y almacenamos su output
 		//console.log('Output: ', output);
 
 		//comprobamos si el output es > 0.5 y
-		// la flag canJump es true, debe saltar
+		// la flag canJump es true -> puede saltar
 		if(output > 0.5 && this.canJump) {
 			this.velocity = this.jumpPower; //aplicamos el salto
 			this.canJump = false; //desactivamos la flag para evitar q de un doble salto
@@ -211,25 +216,29 @@ class Flappy {
 		 //comprueba colisión con el suelo ya q es el unico momento 
 		 // en el q el flappy muere
 		if (this.y > height - 30) { //si su altura es mayor q el canvas - altura del flappy (xq caeria del canvas)
-            this.y = height - 30;//le posicionamos en el borde inferior
-            this.velocity = 0;//para evitar q siga cayendo
             this.dead = true; //actualizamos su valor en dead
+
+			//en este caso no es necesario xq me parece feo verlos en el borde inferior del canvas
+            //this.y = height - 30;//le posicionamos en el borde inferior
+            //this.velocity = 0;//para evitar q siga cayendo
             return;
         }
 
 		// comprobamos la colisión con las pipes
-        for (let i = 0; i < pipes.length; i++) {
-            const pipe = pipes[i];
-            
-            // Comprueba si la pipe está en el espacio del flappy (95-145px del canvas)
-            if (pipe.xStart + pipeWidth >= 95 && pipe.xStart <= 145) {
-                let pipeHeight = pipe.posY - 32; // almacena la altura de la pipe  - 32 (para ajustar cuando s posiciona el flappy)
+        for (let pipe of pipes) {
+			//calculamos los valores en el eje x del final del flappy y d la pipe
+			const flappyRight = this.x + this.width; //la x inicial d dnd se posiciona el flappy + su ancho
+			const pipeRight = pipe.xStart + pipeWidth; //igual q el flappy
+
+            // Comprueba si la pipe está en el espacio del flappy (eje x)
+            if (this. x < pipeRight && flappyRight > pipe.xStart) {
+                let platformPipeY = pipe.posY - 32; // almacena la altura de la pipe - 32 (para ajustar cuando s posiciona el flappy sobre su plataforma)
 
                 //si el flappy esta x encima de la pipe (en el eje y)
                 if (this.y < pipe.posY) {
 					//si no ha saltado aun y esta sobre la pipe
-                    if (this.y >= pipeHeight && !this.hasJumped) {
-                        this.y = pipeHeight; //lo mantenemos "estatico" sobre la altura d la pipe
+                    if (this.y >= platformPipeY && !this.hasJumped) {
+                        this.y = platformPipeY; //lo mantenemos "estatico" sobre la altura d la pipe
                         this.velocity = 0;//paramos la caida
                         this.canJump = true;//activamos el salto (con la flag evitamos q pueda hacer doble salto)
 						return;
@@ -251,7 +260,7 @@ class Flappy {
 
 	show() {
 		// pinta el flappy img, x, y, width, height
-		image(bird, this.x, this.y, this.ancho, this.alto);
+		image(bird, this.x, this.y, this.width, this.height);
 	}
 
 	getInputs() {
@@ -271,6 +280,13 @@ class Flappy {
 			}
 		}
 
+		//normalizamos los valores d los inputs para q esten entre 0 y 1
+		let normalizedFlappyY = this.y / (height - this.height);
+		let normalizedDistToPipeX = distanceToPipe / (width + pipeGap);
+		let normalizedPipeY = closestPipe.posY / (height - this.height);
+		let normalizedPipeX = closestPipe.xStart / (width + pipeGap);
+		let normalizedDistToPipeY = closestPipe.posY - this.y;
+
 		//pinta una linea en el punto d ref q obtiene de la pipe + cercana
 		//ignoralo q es para comprobar q lo detecta bien :)
 		//stroke('red');
@@ -278,10 +294,11 @@ class Flappy {
 
 		//devuelve un array con los valores numericos d referencia
 		return [
-			parseInt(this.y.toFixed()), //la posicion actual del flappy en el eje y
-			parseInt(distanceToPipe.toFixed()), //la distancia entre el flappy y la siguiente pipe (+ cercana)
-			parseInt(closestPipe.posY), //el valor d la parte superior d la pipe (en el eje y)
-			parseInt(closestPipe.xStart.toFixed()), //el valor sin decimales de la posicion x d la pipe + cercana
+			normalizedFlappyY, //la posicion actual del flappy en el eje y
+			normalizedDistToPipeX, //la distancia entre el flappy y la siguiente pipe (+ cercana) en el eje x
+			normalizedPipeY, //el valor d la parte superior d la pipe (en el eje y)
+			normalizedPipeX, //el valor sin decimales de la posicion x d la pipe + cercana
+			normalizedDistToPipeY //distancia entre el flappy y la pipe + cercana en el eje y
 		];
 	}
 }
