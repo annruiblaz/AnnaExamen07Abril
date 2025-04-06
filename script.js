@@ -71,10 +71,10 @@ function draw() {
 		}
 
 		//pinta lineas para visualizar los puntos q utilizo d ref d dnd está el flappy
-		stroke('#FFF');
+/* 		stroke('#FFF');
 		line(95, 0, 95, 600); // x izq
 		line(145, 0, 145, 600);// x derecha
-		line(95, pipes[0].posY -32, 145, pipes[0].posY -32); //punto d "altura d la pipe" q es dnd se posiciona el flappy
+		line(95, pipes[0].posY -32, 145, pipes[0].posY -32); //punto d "altura d la pipe" q es dnd se posiciona el flappy */
 	}
 
 	//bool q controla el estado d los flappys
@@ -297,7 +297,7 @@ class Flappy {
 			normalizedFlappyY, //la posicion actual del flappy en el eje y
 			normalizedDistToPipeX, //la distancia entre el flappy y la siguiente pipe (+ cercana) en el eje x
 			normalizedPipeY, //el valor d la parte superior d la pipe (en el eje y)
-			normalizedPipeX, //el valor sin decimales de la posicion x d la pipe + cercana
+			normalizedPipeX, //el valor de la posicion x d la pipe + cercana
 			normalizedDistToPipeY //distancia entre el flappy y la pipe + cercana en el eje y
 		];
 	}
