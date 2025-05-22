@@ -15,9 +15,9 @@ let flappysAlive = 0;
 
 // Precarga las imágenes del juego
 function preload() {
-	bgGame = loadImage("/assets/background.png");
-	bird = loadImage("/assets/flappy.png");
-	pipeBottom = loadImage("/assets/pipe_bottom.png");
+	bgGame = loadImage("https://annruiblaz.github.io/AnnaExamen07Abril/assets/background.png");
+	bird = loadImage("https://annruiblaz.github.io/AnnaExamen07Abril/assets/flappy.png");
+	pipeBottom = loadImage("https://annruiblaz.github.io/AnnaExamen07Abril/assets/pipe_bottom.png");
 }
 
 // config inicial del juego
